@@ -1,0 +1,31 @@
+Vagrant.configure("2") do |config|
+  
+config.vm.box = "hashicorp/bionic64"
+
+
+
+config.vm.network "forwarded_port", guest: 80, host: 80
+config.vm.network :forwarded_port, guest: 443, host: 443
+
+config.vm.provision "shell", inline: <<-SHELL
+apt-get update
+apt-get install -y apache2
+
+sudo cp -r /vagrant/apache/static/ /var/www/
+sudo cp -r /vagrant/apache/dynamic/ /var/www/
+sudo cp -r /vagrant/apache/certs /etc/apache2/
+cp -f /vagrant/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+cp -f /vagrant/apache/default-ssl.conf /etc/apache2/sites-available/default-ssl.conf
+sudo cp /vagrant/python/server.py /var/www/
+a2enmod ssl headers proxy proxy_http
+a2ensite 000-default.conf default-ssl.conf
+service apache2 reload
+echo "127.0.0.1 static.com" >> /etc/hosts
+echo "127.0.0.1 dynamic.com" >> /etc/hosts
+
+apt-get install -y python3-pip
+pip3 install -U pip aiohttp
+nohup python3 /var/www/server.py &
+
+SHELL
+end
